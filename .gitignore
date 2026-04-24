@@ -1,0 +1,14 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# ルートの作業用（アプリの import には使っていない）
+/Gemini_Generated_Image*.svg
+/metadata.json
+/vode.png
+/Vode_Symbol.png

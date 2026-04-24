@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --vode-ink: #1c1c1e;
+    --vode-muted: #5b5c64;
+    --vode-surface: #ffffff;
+    --vode-canvas-bg: #f9f9fa;
+  }
+
+  button:focus-visible,
+  [role='button']:focus-visible {
+    outline: 2px solid #1c1c1e;
+    outline-offset: 2px;
+  }
+}
+
+@media print {
+  /*
+   * スライドは論理サイズ 1280×calc(1280*210/297) px（A4 横 297mm:210mm と完全一致する縦横比）。
+   * 高さを丸めた整数 px だと用紙比率とずれ、PDF で「100% に合わない」見え方になるため、
+   * 印刷のみ calc で高さを揃え、幅基準の 1 次元 scale で A4 横 1 ページにぴたり収める。
+   * 1280 は src/lib/slideDimensions.ts の SLIDE_CANVAS_W と同じ値にすること。
+   */
+  @page {
+    size: A4 landscape;
+    margin: 0;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  /* Ensure background colors are printed */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Reset layout for printing multiple pages */
+  #root {
+    display: block !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .vode-slide-print-page {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    /* A4 横 1 ページ＝印刷ダイアログの用紙（余白なし想定） */
+    width: 297mm !important;
+    height: 210mm !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: #ffffff !important;
+    break-after: page !important;
+    page-break-after: always !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .vode-slide-print-canvas {
+    flex-shrink: 0 !important;
+    width: 1280px !important;
+    height: calc(1280px * 210 / 297) !important;
+    transform-origin: center center !important;
+    /* 用紙幅 297mm にキャンバス幅 1280px を一致させると、上記の高さで 210mm ぴたりになる */
+    transform: scale(calc(297mm / 1280px)) !important;
+  }
+}
+
