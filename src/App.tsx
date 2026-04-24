@@ -601,20 +601,26 @@ export default function App() {
     if (!fbUser.email || !ALLOWED_EMAILS.includes(fbUser.email)) {
       return (
         <div className="flex h-screen flex-col items-center justify-center bg-[#FDFDFD] px-4 font-sans text-[#1C1C1E]">
-          <div className="w-full max-w-md rounded-xl border border-red-200 bg-red-50 p-8 shadow-sm text-center">
-            <h2 className="text-lg font-bold text-red-950 mb-2">アクセス権限がありません</h2>
-            <p className="text-sm text-red-900 mb-6">
-              このメールアドレス（{fbUser.email || '不明'}）にはアクセス権限が付与されていません。
+          <div className="w-full max-w-md rounded-xl border border-[#5b5c64]/20 bg-[#FFFFFF] p-8 shadow-sm text-center">
+            <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
+              <Search size={32} />
+            </div>
+            <h2 className="text-xl font-bold text-[#1C1C1E] mb-3">承認待ち、または権限がありません</h2>
+            <p className="text-sm text-[#5b5c64] mb-6 leading-relaxed">
+              現在、ログイン中のメールアドレス（<strong>{fbUser.email || '不明'}</strong>）は許可リストに含まれていません。<br /><br />
+              ご利用いただくには、<strong>管理者に承認許可を申請してください。</strong>
             </p>
-            <button
-              type="button"
-              onClick={() => {
-                void signOutUser();
-              }}
-              className="px-4 py-2 bg-red-800 text-white rounded text-sm font-medium hover:bg-red-900 transition-colors"
-            >
-              ログアウトして別のアカウントでログイン
-            </button>
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  void signOutUser();
+                }}
+                className="w-full py-2.5 bg-[#1C1C1E] text-white rounded-md text-sm font-medium hover:bg-[#5b5c64] transition-colors"
+              >
+                ログアウトして別のアカウントで試す
+              </button>
+            </div>
           </div>
         </div>
       );
