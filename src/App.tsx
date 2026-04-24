@@ -590,6 +590,34 @@ export default function App() {
     );
   }
 
+  // 許可するメールアドレス
+  const ALLOWED_EMAIL = 'milktea.the.prime.tasty@gmail.com';
+
+  if (fbConfigured && fbUser) {
+    // ログインしているが許可されたメールアドレスではない場合
+    if (fbUser.email !== ALLOWED_EMAIL) {
+      return (
+        <div className="flex h-screen flex-col items-center justify-center bg-[#FDFDFD] px-4 font-sans text-[#1C1C1E]">
+          <div className="w-full max-w-md rounded-xl border border-red-200 bg-red-50 p-8 shadow-sm text-center">
+            <h2 className="text-lg font-bold text-red-950 mb-2">アクセス権限がありません</h2>
+            <p className="text-sm text-red-900 mb-6">
+              このメールアドレス（{fbUser.email}）にはアクセス権限が付与されていません。
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                void signOutUser();
+              }}
+              className="px-4 py-2 bg-red-800 text-white rounded text-sm font-medium hover:bg-red-900 transition-colors"
+            >
+              ログアウトして別のアカウントでログイン
+            </button>
+          </div>
+        </div>
+      );
+    }
+  }
+
   if (fbConfigured && !fbUser) {
     return <FirebaseLogin />;
   }
