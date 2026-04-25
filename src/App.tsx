@@ -9,7 +9,7 @@ import { EditorField } from './components/editors/EditorField';
 import { CF } from './lib/canvasEditorFieldIds';
 import { ProjectPreviewModal } from './components/ProjectPreviewModal';
 import { cloneDefaultSlides } from './data';
-import { Slide, Project } from './types';
+import { Slide, Project, ListItem, ScheduleRow } from './types';
 import {
   Plus,
   Download,
@@ -35,9 +35,21 @@ import { cn } from './lib/utils';
 import { safeImageSrc } from './lib/urls';
 import { ImageSourceField, normalizeImageFieldValue } from './components/ImageSourceField';
 import { loadProjectsFromStorage, saveProjectsToStorage, parseProjectImportJson } from './lib/projectStorage';
-import { MAX_IMPORT_JSON_BYTES, MAX_SLIDES_PER_PROJECT } from './lib/projectLimits';
+import {
+  MAX_IMPORT_CSV_BYTES,
+  MAX_IMPORT_JSON_BYTES,
+  MAX_LIST_ITEMS,
+  MAX_SCHEDULE_ROWS,
+  MAX_SLIDES_PER_PROJECT,
+} from './lib/projectLimits';
 import { SLIDE_TYPE_LABELS } from './lib/slideLabels';
 import { createEmptySlide } from './lib/createEmptySlide';
+import {
+  exportListSlideCsv,
+  exportScheduleSlideCsv,
+  parseListItemsCsv,
+  parseScheduleRowsCsv,
+} from './lib/slideCsv';
 import {
   ConceptEditor,
   CustomEditor,
@@ -49,6 +61,7 @@ import {
 import { CopySlidesToProjectModal } from './components/CopySlidesToProjectModal';
 import { DeleteProjectConfirmModal } from './components/DeleteProjectConfirmModal';
 import { ImportProjectsConfirmModal } from './components/ImportProjectsConfirmModal';
+import { ImportCsvConfirmModal } from './components/ImportCsvConfirmModal';
 import { DeleteSlideConfirmModal } from './components/DeleteSlideConfirmModal';
 import { LoadTemplateConfirmModal } from './components/LoadTemplateConfirmModal';
 import { FirebaseLogin } from './components/FirebaseLogin';
@@ -81,6 +94,9 @@ const SESSION_CANVAS_MODE = 'vode-editor-canvas-mode';
 
 type CanvasViewMode = 'fit' | 'actual';
 type PendingImport = { projects: Project[]; fileName: string; mode: 'single' | 'all' };
+type PendingCsvImport =
+  | { kind: 'list'; fileName: string; rows: ListItem[] }
+  | { kind: 'schedule'; fileName: string; rows: ScheduleRow[] };
 
 function safeDownloadNamePart(raw: string): string {
   return raw
@@ -226,9 +242,11 @@ export default function App() {
   }, [projects, fbUser?.uid, cloudHydrated]);
 
   const importInputRef = useRef<HTMLInputElement>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
   const canvasViewportRef = useRef<HTMLDivElement>(null);
   const [canvasViewportSize, setCanvasViewportSize] = useState({ w: 0, h: 0 });
   const [importConfirm, setImportConfirm] = useState<PendingImport | null>(null);
+  const [csvImportConfirm, setCsvImportConfirm] = useState<PendingCsvImport | null>(null);
   const [pendingDeleteSlideIndex, setPendingDeleteSlideIndex] = useState<number | null>(null);
   const [rightPanelOpen, setRightPanelOpen] = useState(readSessionRightPanelOpen);
   const [canvasViewMode, setCanvasViewMode] = useState<CanvasViewMode>(readSessionCanvasMode);
@@ -494,6 +512,15 @@ export default function App() {
     URL.revokeObjectURL(a.href);
   };
 
+  const downloadText = (text: string, filename: string, type: string) => {
+    const blob = new Blob([text], { type });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
   const exportActiveProjectJson = () => {
     const date = new Date().toISOString().slice(0, 10);
     downloadJson(activeProject, `vode-project-${safeDownloadNamePart(activeProject.title)}-${date}.json`);
@@ -502,6 +529,86 @@ export default function App() {
   const exportAllProjectsJson = () => {
     const date = new Date().toISOString().slice(0, 10);
     downloadJson(projects, `vode-all-projects-backup-${date}.json`);
+  };
+
+  const canUseSlideCsv = activeSlide?.type === 'list' || activeSlide?.type === 'schedule';
+
+  const exportActiveSlideCsv = () => {
+    if (!activeSlide) return;
+    const date = new Date().toISOString().slice(0, 10);
+    const slideName = safeDownloadNamePart(activeSlide.headerTitle || activeSlide.type);
+    if (activeSlide.type === 'list') {
+      downloadText(exportListSlideCsv(activeSlide), `vode-list-${slideName}-${date}.csv`, 'text/csv;charset=utf-8');
+      return;
+    }
+    if (activeSlide.type === 'schedule') {
+      downloadText(exportScheduleSlideCsv(activeSlide), `vode-schedule-${slideName}-${date}.csv`, 'text/csv;charset=utf-8');
+    }
+  };
+
+  const onImportCsvFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!canUseSlideCsv || !activeSlide || (activeSlide.type !== 'list' && activeSlide.type !== 'schedule')) {
+      setToast({ message: 'CSV 読み込みはリストまたはスケジュールのスライドで利用できます。', variant: 'error' });
+      return;
+    }
+    if (file.size > MAX_IMPORT_CSV_BYTES) {
+      setToast({
+        message: `CSV ファイルが大きすぎます（最大 ${Math.round(MAX_IMPORT_CSV_BYTES / 1_000_000)}MB まで）。`,
+        variant: 'error',
+      });
+      return;
+    }
+    const fileName = file.name;
+    file.text().then((text) => {
+      if (activeSlide.type === 'list') {
+        const parsed = parseListItemsCsv(text);
+        if (parsed.ok === false) {
+          setToast({ message: parsed.error, variant: 'error' });
+          return;
+        }
+        setCsvImportConfirm({ kind: 'list', fileName, rows: parsed.rows });
+        return;
+      }
+      const parsed = parseScheduleRowsCsv(text);
+      if (parsed.ok === false) {
+        setToast({ message: parsed.error, variant: 'error' });
+        return;
+      }
+      setCsvImportConfirm({ kind: 'schedule', fileName, rows: parsed.rows });
+    });
+  };
+
+  const applyCsvImport = (mode: 'append' | 'replace') => {
+    if (!csvImportConfirm) return;
+    const pending = csvImportConfirm;
+    if (mode === 'append' && activeSlide?.type === 'list' && pending.kind === 'list') {
+      if (activeSlide.items.length + pending.rows.length > MAX_LIST_ITEMS) {
+        setToast({ message: `リスト項目は最大 ${MAX_LIST_ITEMS} 件までです。`, variant: 'error' });
+        return;
+      }
+    }
+    if (mode === 'append' && activeSlide?.type === 'schedule' && pending.kind === 'schedule') {
+      if (activeSlide.rows.length + pending.rows.length > MAX_SCHEDULE_ROWS) {
+        setToast({ message: `スケジュール行は最大 ${MAX_SCHEDULE_ROWS} 件までです。`, variant: 'error' });
+        return;
+      }
+    }
+    updateActiveSlide((s) => {
+      if (pending.kind === 'list' && s.type === 'list') {
+        s.items = mode === 'append' ? [...s.items, ...pending.rows] : pending.rows;
+      }
+      if (pending.kind === 'schedule' && s.type === 'schedule') {
+        s.rows = mode === 'append' ? [...s.rows, ...pending.rows] : pending.rows;
+      }
+    });
+    setCsvImportConfirm(null);
+    setToast({
+      message: `${pending.rows.length} 件を${mode === 'append' ? '末尾に追加' : '置き換え'}しました。`,
+      variant: 'info',
+    });
   };
 
   const onImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1127,6 +1234,13 @@ export default function App() {
             className="hidden"
             onChange={onImportFile}
           />
+          <input
+            ref={csvInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={onImportCsvFile}
+          />
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <button 
               type="button"
@@ -1226,6 +1340,34 @@ export default function App() {
                 読み込み
               </span>
             </button>
+            {canUseSlideCsv ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => csvInputRef.current?.click()}
+                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 border border-[#5b5c64]/25 text-[#1C1C1E] text-xs sm:text-sm font-medium rounded-md hover:bg-[#5b5c64]/10 transition-colors"
+                  title="現在のリスト／スケジュールスライドに CSV を読み込み"
+                  aria-label="CSV を読み込み"
+                >
+                  <Upload size={16} className="shrink-0" aria-hidden />
+                  <span className="hidden md:inline" aria-hidden>
+                    CSV読込
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={exportActiveSlideCsv}
+                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 border border-[#5b5c64]/25 text-[#1C1C1E] text-xs sm:text-sm font-medium rounded-md hover:bg-[#5b5c64]/10 transition-colors"
+                  title="現在のリスト／スケジュールスライドを CSV で書き出し"
+                  aria-label="CSV で書き出し"
+                >
+                  <FileDown size={16} className="shrink-0" aria-hidden />
+                  <span className="hidden md:inline" aria-hidden>
+                    CSV出力
+                  </span>
+                </button>
+              </>
+            ) : null}
             <button
               type="button"
               onClick={exportActiveProjectJson}
@@ -1520,6 +1662,15 @@ export default function App() {
       onClose={cancelImportProjects}
       onConfirm={confirmImportProjects}
       onReplaceCurrent={replaceCurrentProjectFromImport}
+    />
+    <ImportCsvConfirmModal
+      open={csvImportConfirm !== null}
+      fileName={csvImportConfirm?.fileName ?? null}
+      kind={csvImportConfirm?.kind ?? 'list'}
+      rowCount={csvImportConfirm?.rows.length ?? 0}
+      onClose={() => setCsvImportConfirm(null)}
+      onAppend={() => applyCsvImport('append')}
+      onReplace={() => applyCsvImport('replace')}
     />
     <DeleteSlideConfirmModal
       open={

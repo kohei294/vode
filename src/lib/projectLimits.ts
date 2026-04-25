@@ -1,5 +1,7 @@
 /** JSON テキスト（インポート・localStorage）の上限 */
 export const MAX_IMPORT_JSON_BYTES = 4_000_000;
+/** CSV テキスト（Notion 連携用）の上限 */
+export const MAX_IMPORT_CSV_BYTES = 1_000_000;
 
 export const MAX_PROJECTS = 80;
 export const MAX_SLIDES_PER_PROJECT = 250;
