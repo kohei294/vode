@@ -14,6 +14,21 @@ export function parseProjectsJson(raw: string): Project[] | null {
   }
 }
 
+/**
+ * ユーザー操作の JSON 読み込み用。
+ * 新仕様の単一 Project と、旧来の全体バックアップ Project[] の両方を受け付ける。
+ */
+export function parseProjectImportJson(raw: string): Project[] | null {
+  if (raw.length > MAX_IMPORT_JSON_BYTES) return null;
+  try {
+    const data = JSON.parse(raw) as unknown;
+    if (Array.isArray(data)) return validateImportedProjects(data);
+    return validateImportedProjects([data]);
+  } catch {
+    return null;
+  }
+}
+
 export function loadProjectsFromStorage(): Project[] | null {
   if (typeof window === 'undefined') return null;
   try {

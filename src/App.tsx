@@ -34,7 +34,7 @@ import {
 import { cn } from './lib/utils';
 import { safeImageSrc } from './lib/urls';
 import { ImageSourceField, normalizeImageFieldValue } from './components/ImageSourceField';
-import { loadProjectsFromStorage, saveProjectsToStorage, parseProjectsJson } from './lib/projectStorage';
+import { loadProjectsFromStorage, saveProjectsToStorage, parseProjectImportJson } from './lib/projectStorage';
 import { MAX_IMPORT_JSON_BYTES, MAX_SLIDES_PER_PROJECT } from './lib/projectLimits';
 import { SLIDE_TYPE_LABELS } from './lib/slideLabels';
 import { createEmptySlide } from './lib/createEmptySlide';
@@ -80,6 +80,29 @@ const SESSION_RIGHT_PANEL = 'vode-editor-right-panel-open';
 const SESSION_CANVAS_MODE = 'vode-editor-canvas-mode';
 
 type CanvasViewMode = 'fit' | 'actual';
+type PendingImport = { projects: Project[]; fileName: string; mode: 'single' | 'all' };
+
+function safeDownloadNamePart(raw: string): string {
+  return raw
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, '-')
+    .replace(/\s+/g, '-')
+    .slice(0, 60) || 'project';
+}
+
+function projectForNewImport(project: Project): Project {
+  return {
+    ...project,
+    id: crypto.randomUUID(),
+  };
+}
+
+function projectForCurrentReplacement(project: Project, currentId: string): Project {
+  return {
+    ...project,
+    id: currentId,
+  };
+}
 
 function readSessionRightPanelOpen(): boolean {
   try {
@@ -205,7 +228,7 @@ export default function App() {
   const importInputRef = useRef<HTMLInputElement>(null);
   const canvasViewportRef = useRef<HTMLDivElement>(null);
   const [canvasViewportSize, setCanvasViewportSize] = useState({ w: 0, h: 0 });
-  const [importConfirm, setImportConfirm] = useState<{ projects: Project[]; fileName: string } | null>(null);
+  const [importConfirm, setImportConfirm] = useState<PendingImport | null>(null);
   const [pendingDeleteSlideIndex, setPendingDeleteSlideIndex] = useState<number | null>(null);
   const [rightPanelOpen, setRightPanelOpen] = useState(readSessionRightPanelOpen);
   const [canvasViewMode, setCanvasViewMode] = useState<CanvasViewMode>(readSessionCanvasMode);
@@ -462,13 +485,23 @@ export default function App() {
     setTemplateLoadConfirmOpen(false);
   };
 
-  const exportProjectsJson = () => {
-    const blob = new Blob([JSON.stringify(projects, null, 2)], { type: 'application/json' });
+  const downloadJson = (data: unknown, filename: string) => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `vode-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(a.href);
+  };
+
+  const exportActiveProjectJson = () => {
+    const date = new Date().toISOString().slice(0, 10);
+    downloadJson(activeProject, `vode-project-${safeDownloadNamePart(activeProject.title)}-${date}.json`);
+  };
+
+  const exportAllProjectsJson = () => {
+    const date = new Date().toISOString().slice(0, 10);
+    downloadJson(projects, `vode-all-projects-backup-${date}.json`);
   };
 
   const onImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -485,9 +518,9 @@ export default function App() {
     const fileName = file.name;
     file.text().then((text) => {
       e.target.value = '';
-      const parsed = parseProjectsJson(text);
+      const parsed = parseProjectImportJson(text);
       if (parsed) {
-        setImportConfirm({ projects: parsed, fileName });
+        setImportConfirm({ projects: parsed, fileName, mode: parsed.length === 1 ? 'single' : 'all' });
       } else {
         setToast({
           message:
@@ -500,12 +533,32 @@ export default function App() {
 
   const confirmImportProjects = () => {
     if (!importConfirm) return;
+    if (importConfirm.mode === 'single') {
+      const imported = projectForNewImport(importConfirm.projects[0]!);
+      setProjects((prev) => [imported, ...prev]);
+      setActiveProjectId(imported.id);
+      setCurrentIndex(0);
+      setView('editor');
+      setImportConfirm(null);
+      setToast({ message: `「${imported.title}」を新規プロジェクトとして追加しました。`, variant: 'info' });
+      return;
+    }
     setProjects(importConfirm.projects);
     setActiveProjectId(importConfirm.projects[0]!.id);
     setCurrentIndex(0);
     setView('editor');
     setImportConfirm(null);
-    setToast({ message: 'JSON を読み込みました。', variant: 'info' });
+    setToast({ message: '全プロジェクトを復元しました。', variant: 'info' });
+  };
+
+  const replaceCurrentProjectFromImport = () => {
+    if (!importConfirm || importConfirm.mode !== 'single') return;
+    const replacement = projectForCurrentReplacement(importConfirm.projects[0]!, activeProjectId);
+    setProjects((prev) => prev.map((p) => (p.id === activeProjectId ? replacement : p)));
+    setCurrentIndex(0);
+    setView('editor');
+    setImportConfirm(null);
+    setToast({ message: `現在のプロジェクトを「${replacement.title}」で置き換えました。`, variant: 'info' });
   };
 
   const cancelImportProjects = () => setImportConfirm(null);
@@ -1165,8 +1218,8 @@ export default function App() {
               type="button"
               onClick={() => importInputRef.current?.click()}
               className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 border border-[#5b5c64]/25 text-[#1C1C1E] text-xs sm:text-sm font-medium rounded-md hover:bg-[#5b5c64]/10 transition-colors"
-              title="JSON を読み込み（全プロジェクトを置き換え）"
-              aria-label="JSON を読み込み"
+              title="JSON を読み込み（通常は新しいプロジェクトとして追加）"
+              aria-label="プロジェクト JSON を読み込み"
             >
               <Upload size={16} className="shrink-0" aria-hidden />
               <span className="hidden md:inline" aria-hidden>
@@ -1175,14 +1228,26 @@ export default function App() {
             </button>
             <button
               type="button"
-              onClick={exportProjectsJson}
+              onClick={exportActiveProjectJson}
               className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 border border-[#5b5c64]/25 text-[#1C1C1E] text-xs sm:text-sm font-medium rounded-md hover:bg-[#5b5c64]/10 transition-colors"
-              title="すべてのプロジェクトを JSON で保存"
-              aria-label="すべてのプロジェクトを JSON で書き出し"
+              title="開いているプロジェクトだけを JSON で保存"
+              aria-label="現在のプロジェクトを JSON で書き出し"
             >
               <FileDown size={16} className="shrink-0" aria-hidden />
               <span className="hidden md:inline" aria-hidden>
                 書き出し
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={exportAllProjectsJson}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 border border-[#5b5c64]/25 text-[#1C1C1E] text-xs sm:text-sm font-medium rounded-md hover:bg-[#5b5c64]/10 transition-colors"
+              title="すべてのプロジェクトをバックアップ JSON として保存"
+              aria-label="全プロジェクトをバックアップ"
+            >
+              <FileDown size={16} className="shrink-0" aria-hidden />
+              <span className="hidden md:inline" aria-hidden>
+                全体バックアップ
               </span>
             </button>
             <button 
@@ -1450,8 +1515,11 @@ export default function App() {
       open={importConfirm !== null}
       fileName={importConfirm?.fileName ?? null}
       projectCount={importConfirm?.projects.length ?? 0}
+      projectTitle={importConfirm?.projects[0]?.title ?? null}
+      mode={importConfirm?.mode ?? 'single'}
       onClose={cancelImportProjects}
       onConfirm={confirmImportProjects}
+      onReplaceCurrent={replaceCurrentProjectFromImport}
     />
     <DeleteSlideConfirmModal
       open={
