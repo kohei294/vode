@@ -1,6 +1,6 @@
 # Vode
 
-ブラウザ上でスライド資料を編集する React アプリです。データは **localStorage** に保存されます。Firebase の環境変数を設定すると **メール／パスワード認証** と **Firestore** によるクラウド同期（ユーザーごとの `users/{uid}/vode/projects`）が有効になります。
+**Project Node For Video** として、動画制作向けの企画・撮影資料をブラウザ上で編集する React アプリです。データは **localStorage** に保存されます。Firebase の環境変数を設定すると **メール／パスワード認証** と **Firestore** によるクラウド同期（ユーザーごとの `users/{uid}/vode/projects`）が有効になります。
 
 ## ローカルで動かす
 

@@ -837,24 +837,29 @@ export default function App() {
       <div className="flex flex-col w-full h-screen bg-[#FDFDFD] font-sans text-[#1C1C1E]">
         {/* Dashboard Topbar */}
         <div className="h-16 border-b border-[#5b5c64]/20 flex items-center justify-between gap-4 px-6 sm:px-8 shrink-0 bg-[#FFFFFF]">
-          <div className={cn(vodeBrandRowClass, 'min-h-10 max-w-[min(100%,32rem)]')}>
-            <img
-              src={vodeSymbolUrl}
-              alt=""
-              width={500}
-              height={500}
-              decoding="async"
-              aria-hidden
-              className={vodeSymbolDashboardClass}
-            />
-            <img
-              src={vodeLogoUrl}
-              alt="Vode"
-              width={1000}
-              height={360}
-              decoding="async"
-              className={vodeLogoImgClass}
-            />
+          <div className="flex min-w-0 items-center gap-4">
+            <div className={cn(vodeBrandRowClass, 'min-h-10 max-w-[min(100%,32rem)]')}>
+              <img
+                src={vodeSymbolUrl}
+                alt=""
+                width={500}
+                height={500}
+                decoding="async"
+                aria-hidden
+                className={vodeSymbolDashboardClass}
+              />
+              <img
+                src={vodeLogoUrl}
+                alt="Vode"
+                width={1000}
+                height={360}
+                decoding="async"
+                className={vodeLogoImgClass}
+              />
+            </div>
+            <span className="hidden shrink-0 border-l border-[#5b5c64]/20 pl-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#5b5c64] md:inline">
+              Project Node For Video
+            </span>
             {import.meta.env.DEV ? (
               <span
                 className={cn(

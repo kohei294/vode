@@ -50,6 +50,9 @@ export function FirebaseLogin() {
               className="h-10 w-auto max-w-[min(100%,240px)] shrink-0 object-contain object-left sm:h-11 sm:max-w-[min(100%,280px)]"
             />
           </div>
+          <p className="mt-3 text-center text-xs font-semibold uppercase tracking-[0.22em] text-[#5b5c64]">
+            Project Node For Video
+          </p>
         </div>
         <p className="mt-5 text-center text-sm text-[#5b5c64]">
           {mode === 'signin' ? 'アカウントにログインしてクラウド同期を使います。' : '新規アカウントを作成します。'}
