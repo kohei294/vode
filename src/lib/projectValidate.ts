@@ -182,9 +182,10 @@ function listItem(o: unknown): ListItem | null {
   const title = s(r.title, MAX_TITLE);
   const description = s(r.description, MAX_BODY);
   if (!id || !title || !description) return null;
+  const tag = sOpt(r.tag, MAX_SHORT_FIELD);
   const urlRaw = sOpt(r.url, MAX_URL_FIELD);
-  if (urlRaw === undefined) return { id, title, description };
-  return { id, title, description, url: urlRaw };
+  if (urlRaw === undefined && tag === undefined) return { id, title, description };
+  return { id, title, description, ...(tag ? { tag } : {}), ...(urlRaw ? { url: urlRaw } : {}) };
 }
 
 function listSlide(o: Record<string, unknown>): ListSlide | null {

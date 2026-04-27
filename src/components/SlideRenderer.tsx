@@ -599,6 +599,8 @@ function ScheduleSlideRenderer({ slide, ...canvas }: { slide: ScheduleSlide } & 
 
 function ListSlideRenderer({ slide, ...canvas }: { slide: ListSlide } & CanvasProps) {
   const { onCanvasEdit, canvasFieldLink, linkedFieldId } = canvas;
+  const visibleItems = slide.items.slice(0, 5);
+  const rowCount = Math.max(1, visibleItems.length);
   return (
     <div className="flex h-full w-full flex-col items-center overflow-hidden rounded-xl border border-[#5b5c64]/10 bg-[#FFFFFF] p-8 shadow-sm">
       <CanvasEditableText
@@ -609,16 +611,38 @@ function ListSlideRenderer({ slide, ...canvas }: { slide: ListSlide } & CanvasPr
         onCanvasEdit={onCanvasEdit}
         canvasFieldLink={canvasFieldLink}
         linkedFieldId={linkedFieldId}
-        className="mb-8 text-center text-3xl font-black text-[#1C1C1E]"
+        className="mb-6 text-center text-[2rem] font-black leading-tight text-[#1C1C1E]"
       />
 
-      <div className="w-full max-w-5xl space-y-3 overflow-auto">
-        {slide.items.map((item, i) => (
-          <div key={item.id} className="flex items-start gap-4 rounded-lg border border-[#5b5c64]/10 bg-[#FFFFFF] p-4 shadow-sm">
-            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#5b5c64]/10 text-sm font-bold text-[#1C1C1E]">
+      <div className="flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-2.5 overflow-hidden">
+        {visibleItems.map((item, i) => (
+          <div
+            key={item.id}
+            className="flex min-h-0 flex-1 items-start gap-3 rounded-lg border border-[#5b5c64]/10 bg-[#FFFFFF] px-3.5 py-2.5 shadow-sm"
+            style={{ minHeight: `${Math.floor(320 / rowCount)}px` }}
+          >
+            <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#5b5c64]/10 text-xs font-bold text-[#1C1C1E]">
               {i + 1}
             </div>
-            <div className="min-w-0 flex-1">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+              {item.tag ? (
+                <CanvasEditableText
+                  as="div"
+                  fieldId={CF.listItem(item.id, 'tag')}
+                  value={item.tag}
+                  commit={(next) =>
+                    onCanvasEdit?.((s) => {
+                      if (s.type !== 'list') return;
+                      const it = s.items.find((x) => x.id === item.id);
+                      if (it) it.tag = next;
+                    })
+                  }
+                  onCanvasEdit={onCanvasEdit}
+                  canvasFieldLink={canvasFieldLink}
+                  linkedFieldId={linkedFieldId}
+                  className="mb-1 inline-flex w-max max-w-full rounded-full border border-[#5b5c64]/25 bg-[#5b5c64]/8 px-2.5 py-0.5 text-[11px] font-semibold text-[#5b5c64]"
+                />
+              ) : null}
               <CanvasEditableText
                 as="h3"
                 fieldId={CF.listItem(item.id, 'title')}
@@ -633,7 +657,7 @@ function ListSlideRenderer({ slide, ...canvas }: { slide: ListSlide } & CanvasPr
                 onCanvasEdit={onCanvasEdit}
                 canvasFieldLink={canvasFieldLink}
                 linkedFieldId={linkedFieldId}
-                className="mb-1 text-lg font-bold text-[#1C1C1E]"
+                className="mb-1 text-base font-bold leading-snug text-[#1C1C1E]"
               />
               <CanvasEditableText
                 as="p"
@@ -650,14 +674,14 @@ function ListSlideRenderer({ slide, ...canvas }: { slide: ListSlide } & CanvasPr
                 canvasFieldLink={canvasFieldLink}
                 linkedFieldId={linkedFieldId}
                 multiline
-                className="mb-2 text-sm leading-relaxed text-[#5b5c64]"
+                className="mb-1.5 min-h-0 overflow-hidden text-xs leading-relaxed text-[#5b5c64]"
               />
               {item.url && safeExternalHref(item.url) && (
                 <a
                   href={safeExternalHref(item.url)!}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="break-all text-xs font-medium text-blue-600 hover:underline"
+                  className="break-all text-[11px] font-medium text-blue-600 hover:underline"
                 >
                   {item.url}
                 </a>

@@ -419,6 +419,15 @@ export function ListEditor({
               className="w-full rounded border border-[#5b5c64]/30 bg-[#FFFFFF] px-2 py-1 text-sm text-[#1C1C1E] focus:border-[#1C1C1E] focus:outline-none"
             />
           </EditorField>
+          <EditorField fieldId={CF.listItem(item.id, 'tag')} linkedFieldId={linkedCanvasFieldId} fieldLink={fieldLink}>
+            <input
+              type="text"
+              placeholder="タグ（任意）"
+              value={item.tag || ''}
+              onChange={(e) => patchList(update, (d) => { d.items[i].tag = e.target.value; })}
+              className="w-full rounded border border-[#5b5c64]/30 bg-[#FFFFFF] px-2 py-1 text-sm text-[#1C1C1E] focus:border-[#1C1C1E] focus:outline-none"
+            />
+          </EditorField>
           <EditorField fieldId={CF.listItem(item.id, 'description')} linkedFieldId={linkedCanvasFieldId} fieldLink={fieldLink}>
             <textarea
               placeholder="説明"
@@ -454,6 +463,7 @@ export function ListEditor({
             d.items.push({
               id: crypto.randomUUID(),
               title: '',
+              tag: '',
               description: '',
               url: '',
             });

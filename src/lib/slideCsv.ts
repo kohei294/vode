@@ -10,7 +10,7 @@ import {
 } from './projectLimits';
 import { safeImageSrc } from './urls';
 
-const LIST_HEADERS = ['title', 'description', 'url'] as const;
+const LIST_HEADERS = ['title', 'tag', 'description', 'url'] as const;
 const SCHEDULE_HEADERS = ['time', 'shootingSubject', 'sceneName', 'image', 'staffDetails', 'cameraNotes'] as const;
 
 export type CsvParseResult<T> =
@@ -39,7 +39,7 @@ function rowsToCsv(headers: readonly string[], rows: string[][]): string {
 export function exportListSlideCsv(slide: ListSlide): string {
   return rowsToCsv(
     LIST_HEADERS,
-    slide.items.map((item) => [item.title, item.description, item.url ?? ''])
+    slide.items.map((item) => [item.title, item.tag ?? '', item.description, item.url ?? ''])
   );
 }
 
@@ -118,22 +118,24 @@ export function parseListItemsCsv(text: string): CsvParseResult<ListItem[]> {
   if (parsed.ok === false) return { ok: false, error: parsed.error };
   const [header, ...data] = parsed.rows;
   const map = headerMap(header ?? []);
-  const missing = requireHeaders(map, LIST_HEADERS);
+  const missing = requireHeaders(map, ['title', 'description', 'url'] as const);
   if (missing) return { ok: false, error: missing };
   if (data.length > MAX_LIST_ITEMS) return { ok: false, error: `リスト項目は最大 ${MAX_LIST_ITEMS} 件までです。` };
 
   const items: ListItem[] = [];
   for (const row of data) {
     const title = cell(row[map.get('title')!], MAX_TITLE);
+    const tag = map.has('tag') ? cell(row[map.get('tag')!], MAX_SHORT_FIELD) : '';
     const description = cell(row[map.get('description')!], MAX_BODY);
     const url = cell(row[map.get('url')!], MAX_URL_FIELD);
-    if (title === null || description === null || url === null) {
+    if (title === null || tag === null || description === null || url === null) {
       return { ok: false, error: 'CSV の文字数が上限を超えています。' };
     }
-    if (!title && !description && !url) continue;
+    if (!title && !tag && !description && !url) continue;
     items.push({
       id: crypto.randomUUID(),
       title,
+      ...(tag ? { tag } : {}),
       description,
       ...(url ? { url } : {}),
     });

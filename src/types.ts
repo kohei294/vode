@@ -59,6 +59,8 @@ export interface ScheduleSlide extends BaseSlide {
 export interface ListItem {
   id: string;
   title: string;
+  /** Optional short label shown like a tag on each item. */
+  tag?: string;
   description: string;
   /** Optional link shown under the item (https recommended). */
   url?: string;

@@ -18,7 +18,7 @@ export const CF = {
   scheduleRow: (rowId: string, part: 'time' | 'shootingSubject' | 'sceneName' | 'staffDetails' | 'cameraNotes') =>
     `schedule:${rowId}:${part}`,
   listTitle: 'listTitle',
-  listItem: (itemId: string, part: 'title' | 'description') => `list:${itemId}:${part}`,
+  listItem: (itemId: string, part: 'title' | 'tag' | 'description') => `list:${itemId}:${part}`,
   customTitle: 'customTitle',
   customContent: 'customContent',
 } as const;
