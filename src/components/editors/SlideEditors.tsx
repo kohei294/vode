@@ -62,6 +62,14 @@ function patchCustom(update: MutateSlide, fn: (d: CustomSlide) => void) {
   });
 }
 
+function normalizeCommaSeparatedTags(raw: string): string {
+  return raw
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean)
+    .join(', ');
+}
+
 export function ConceptEditor({
   slide,
   update,
@@ -422,9 +430,18 @@ export function ListEditor({
           <EditorField fieldId={CF.listItem(item.id, 'tag')} linkedFieldId={linkedCanvasFieldId} fieldLink={fieldLink}>
             <input
               type="text"
-              placeholder="タグ（任意）"
+              placeholder="タグ（任意・カンマ区切り）"
               value={item.tag || ''}
-              onChange={(e) => patchList(update, (d) => { d.items[i].tag = e.target.value; })}
+              onChange={(e) =>
+                patchList(update, (d) => {
+                  d.items[i].tag = e.target.value;
+                })
+              }
+              onBlur={(e) =>
+                patchList(update, (d) => {
+                  d.items[i].tag = normalizeCommaSeparatedTags(e.target.value);
+                })
+              }
               className="w-full rounded border border-[#5b5c64]/30 bg-[#FFFFFF] px-2 py-1 text-sm text-[#1C1C1E] focus:border-[#1C1C1E] focus:outline-none"
             />
           </EditorField>

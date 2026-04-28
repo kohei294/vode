@@ -625,23 +625,24 @@ function ListSlideRenderer({ slide, ...canvas }: { slide: ListSlide } & CanvasPr
               {i + 1}
             </div>
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-              {item.tag ? (
-                <CanvasEditableText
-                  as="div"
-                  fieldId={CF.listItem(item.id, 'tag')}
-                  value={item.tag}
-                  commit={(next) =>
-                    onCanvasEdit?.((s) => {
-                      if (s.type !== 'list') return;
-                      const it = s.items.find((x) => x.id === item.id);
-                      if (it) it.tag = next;
-                    })
-                  }
-                  onCanvasEdit={onCanvasEdit}
-                  canvasFieldLink={canvasFieldLink}
-                  linkedFieldId={linkedFieldId}
-                  className="mb-1 inline-flex w-max max-w-full rounded-full border border-[#5b5c64]/25 bg-[#5b5c64]/8 px-2.5 py-0.5 text-[11px] font-semibold text-[#5b5c64]"
-                />
+              {(item.tag ?? '')
+                .split(',')
+                .map((tag) => tag.trim())
+                .filter(Boolean).length > 0 ? (
+                <div className="mb-1 flex max-w-full flex-wrap gap-1.5">
+                  {(item.tag ?? '')
+                    .split(',')
+                    .map((tag) => tag.trim())
+                    .filter(Boolean)
+                    .map((tag, tagIdx) => (
+                      <span
+                        key={`${item.id}-tag-${tagIdx}`}
+                        className="inline-flex max-w-full rounded-full border border-[#5b5c64]/25 bg-[#5b5c64]/8 px-2.5 py-0.5 text-[11px] font-semibold text-[#5b5c64]"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                </div>
               ) : null}
               <CanvasEditableText
                 as="h3"
