@@ -67,6 +67,12 @@
     page-break-inside: avoid !important;
   }
 
+  /* 最後のスライドの後ろで改ページしない（空白1ページ対策） */
+  .vode-slide-print-page:last-child {
+    break-after: auto !important;
+    page-break-after: auto !important;
+  }
+
   .vode-slide-print-canvas {
     flex-shrink: 0 !important;
     width: 1280px !important;
